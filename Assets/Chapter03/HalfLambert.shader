@@ -51,10 +51,10 @@ Shader "URP/HalfLambert"
 
             HLSLPROGRAM
 
-            #pragma vertex VERT
-            #pragma fragment FRAG
+            #pragma vertex vert
+            #pragma fragment frag
 
-            v2f VERT(a2v i)
+            v2f vert(a2v i)
             {
                 v2f o;
                 o.positionCS = TransformObjectToHClip(i.positionOS.xyz);
@@ -68,17 +68,20 @@ Shader "URP/HalfLambert"
                 return o;
             }
 
-            half4 FRAG(v2f i) : SV_TARGET
+            half4 frag(v2f i) : SV_TARGET
             {
-                //采样纹理
-                half4 tex = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord) * _BaseColor;
 
-                //计算漫反射
+                 //采样纹理
+                half4 texColor = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord);
+
                 Light myLight = GetMainLight();
                 real4 lightColor = real4(myLight.color,1);
+
+                //计算漫反射 半兰伯特
                 float3 lightDir = normalize(myLight.direction);
-                float lightAten = saturate(dot(lightDir,i.normalWS));
-                return tex  * lightColor * (lightAten *0.5 + 0.5);
+                float diffuse = saturate(dot(lightDir,i.normalWS)) *0.5 + 0.5;
+
+                return diffuse * lightColor * texColor  * _BaseColor;
             }
 
             ENDHLSL

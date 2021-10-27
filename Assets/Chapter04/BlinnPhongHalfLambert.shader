@@ -58,10 +58,10 @@ Shader "URP/BlinnPhongHalfLambert"
 
             HLSLPROGRAM
 
-            #pragma vertex vert1
-            #pragma fragment frag1
+            #pragma vertex vert
+            #pragma fragment frag
 
-            v2f vert1(a2v i)
+            v2f vert(a2v i)
             {
                 v2f o;
                 o.positionCS = TransformObjectToHClip(i.positionOS.xyz);
@@ -81,27 +81,23 @@ Shader "URP/BlinnPhongHalfLambert"
                 return o;
             }
 
-            half4 frag1(v2f i) : SV_TARGET
+            half4 frag(v2f i) : SV_TARGET
             {
-                //采样纹理
-                half4 tex = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord) * _BaseColor;
+                 //采样纹理
+                half4 texColor = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord);
 
                 Light myLight = GetMainLight();
-                
-                //计算高光
-                float3 lightDirWS = normalize(myLight.direction);
-                float spe = saturate(dot(normalize(lightDirWS + i.viewDirWS),i.normalWS));
-                real4 speColor = pow(spe,_SpecularRange) * _SpecularColor;
-
-                //计算漫反射
                 real4 lightColor = real4(myLight.color,1);
-                float3 lightDir = normalize(myLight.direction);
-                float lightAten = saturate(dot(lightDir,i.normalWS)) * 0.5 + 0.5;
 
-                real4 texColor = lightAten * tex * _BaseColor;
-                texColor *= real4(myLight.color,1);
+                //计算漫反射 半兰伯特
+                float3 lightDirWS = normalize(myLight.direction);
+                float diffuse = saturate(dot(lightDirWS,i.normalWS)) *0.5 + 0.5;
 
-                return speColor + texColor;
+                 //计算高光
+                float spe = saturate(dot(normalize(lightDirWS + i.viewDirWS),i.normalWS));
+                spe = pow(spe,_SpecularRange);
+
+                return (spe * _SpecularColor)  + (diffuse * lightColor * texColor  * _BaseColor);
                 
             }
 
