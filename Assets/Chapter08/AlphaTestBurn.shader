@@ -1,26 +1,30 @@
-﻿//兰伯特光照模型
-Shader "URP/Lambert"
+﻿//基于透明度测试的烧溶
+Shader "URP/AlphaTestBurn"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
         _BaseColor("BaseColor",Color) = (1,1,1,1)
+        _Cutoff("Cutoff",Range(0,1)) = 1
+        [HDR]_BurnColor("BurnColor",Color) = (2.5,1,1,1)  //灼烧光颜色
     }
     SubShader
     {
         Tags {
         "RenderPipeline" = "UniversalRenderPipeline"
-        "RenderType"="Opaque" 
+        "RenderType"="TransparentCutout"
+        "Queue" = "AlphaTest" 
         }
 
         HLSLINCLUDE
 
         #include  "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_ST;
         half4 _BaseColor;
+        float _Cutoff;
+        real4 _BurnColor;
         CBUFFER_END
 
         //纹理采样
@@ -38,16 +42,18 @@ Shader "URP/Lambert"
         {
             float4 positionCS : SV_POSITION;
             float2 texcoord : TEXCOORD;
-            float normalWS : TEXCOORD1;
         };
 
         ENDHLSL
 
-        Pass
+         Pass
         {
-            Tags{
+            Tags
+            {
                 "LightMode" = "UniversalForward"
             }
+
+            Cull Off
 
             HLSLPROGRAM
 
@@ -62,29 +68,30 @@ Shader "URP/Lambert"
                 //计算纹理坐标
                 o.texcoord = TRANSFORM_TEX(i.texcoord,_MainTex);
 
-                //将法线从模型空间转换到世界空间
-                o.normalWS = TransformObjectToWorldNormal(i.normalOS);
-
                 return o;
             }
 
-            half4 frag(v2f i) : SV_TARGET
+            real4 frag(v2f i) : SV_TARGET
             {
                 //采样纹理
                 half4 texColor = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord);
-
                 
-                Light myLight = GetMainLight();
-                real4 lightColor = real4(myLight.color,1);
+                //step(a,b)函数 a<=b时返回1，否则返回0
+                clip(step(_Cutoff,texColor.r) - 0.01);  
 
-                //计算漫反射
-                float3 lightDir = normalize(myLight.direction);
-                float diffuse = saturate(dot(lightDir,i.normalWS));
+                //使用lerp在原色和灼烧色中进行选择
+                //Cutoff+0.1是为了实现火焰边缘灼烧效果
+                //假设cutOff为0.5 那么r<0.5的地方都会被clip掉 r位于0.5到0.6的地方会显示灼烧色 r>0.6的地方会显示原色
+                texColor = lerp(texColor,_BurnColor,step(texColor.r,saturate(_Cutoff + 0.1)));
 
-                return diffuse * lightColor * texColor *  _BaseColor;
+                return texColor * _BaseColor;
             }
 
             ENDHLSL
         }
+
+
+
+
     }
 }

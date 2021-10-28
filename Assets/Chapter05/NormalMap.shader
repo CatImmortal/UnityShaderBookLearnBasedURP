@@ -5,9 +5,11 @@ Shader "URP/NormalMap"
     {
         _MainTex ("Texture", 2D) = "white" {}
         _BaseColor("BaseColor",Color) = (1,1,1,1)
+        
         [Normal]
         _NormalTex("Normal",2D) = "bump"{}
         _NormalScale("NormalScale",Range(0,1)) = 1
+
         _SpecularRange("SpecularRange",Range(1,200)) = 50
         [HDR]
         _SpecularColor("SpecularColor",Color) = (1,1,1,1)
