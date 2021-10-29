@@ -1,5 +1,5 @@
-﻿//多光源
-Shader "URP/MultiLight"
+﻿//多光源阴影
+Shader "URP/MultiLightAndShadow"
 {
     Properties
     {
@@ -56,6 +56,18 @@ Shader "URP/MultiLight"
             #pragma vertex vert
             #pragma fragment frag
 
+            //计算主光源阴影
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+
+            //用来获取阴影坐标
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+
+            //用来获取额外光源的阴影衰减
+            #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
+
+            //柔化阴影 得到软阴影
+            #pragma multi_compile _ _SHADOWS_SOFT  
+
             v2f vert(a2v i)
             {
                 v2f o;
@@ -70,11 +82,13 @@ Shader "URP/MultiLight"
 
             real4 frag(v2f i) : SV_TARGET
             {
+                //阴影纹理坐标
+                half4 shadowTexcoord = TransformWorldToShadowCoord(i.WS_P);
 
                 //采样纹理
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord) * _BaseColor;
 
-                Light myLight = GetMainLight();
+                Light myLight = GetMainLight(shadowTexcoord);
                 float3 WS_Light = normalize(myLight.direction);
                 float3 WS_Normal = i.WS_N;
                 float3 WS_View = i.WS_V;
@@ -82,7 +96,7 @@ Shader "URP/MultiLight"
                 float3 WS_Pos = i.WS_P;
 
                 //计算主光源
-                float4 mainColor = (dot(WS_Light,WS_Normal)*0.5+0.5) * tex * float4(myLight.color,1);
+                float4 mainColor = (dot(WS_Light,WS_Normal)*0.5+0.5) * tex * float4(myLight.color,1) * myLight.shadowAttenuation;
  
                 //计算额外光源
                 real4 addColor = real4(0,0,0,1);

@@ -56,11 +56,14 @@ Shader "URP/MainLightShadow"
             #pragma vertex vert
             #pragma fragment frag
 
+            //计算主光源阴影的关键字
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
 
+            //用来获取阴影坐标的关键字
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
 
-            #pragma multi_compile _ _SHADOWS_SOFT
+            //柔化阴影 得到软阴影
+            #pragma multi_compile _ _SHADOWS_SOFT  
 
             v2f vert(a2v i)
             {
@@ -81,7 +84,10 @@ Shader "URP/MainLightShadow"
                 //采样纹理
                 half4 texColor = SAMPLE_TEXTURE2D(_MainTex,sampler_MainTex,i.texcoord);
 
+                //TransformWorldToShadowCoord函数将世界坐标转换为阴影坐标
+                //计算带阴影衰减的主光源
                 Light myLight = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
+
                 real4 lightColor = real4(myLight.color,1);
                 float3 WS_L = normalize(myLight.direction);
                 float3 WS_N = normalize(i.normalWS);
